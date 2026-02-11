@@ -1,7 +1,13 @@
 import os
 import requests
+from threading import Thread
+from io import BytesIO
+
+from flask import Flask
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+
 
 TOKEN = os.getenv("BOT_TOKEN")
 
@@ -9,39 +15,60 @@ IMG_DOMAIN = "https://img.ophim.live/uploads/movies/"
 
 
 ########################################
-# START / HELP
+# FIX IMAGE FUNCTION
+########################################
+
+def get_image(poster):
+
+    if not poster:
+        return None
+
+    try:
+
+        # nếu là link đầy đủ
+        if poster.startswith("http"):
+            url = poster
+        else:
+            url = IMG_DOMAIN + poster
+
+        res = requests.get(url, timeout=10)
+
+        if res.status_code == 200:
+            return BytesIO(res.content)
+
+    except Exception as e:
+        print("Image error:", e)
+
+    return None
+
+
+########################################
+# START
 ########################################
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         " BOT XEM PHIM\n\n"
-
-        " Cách sử dụng:\n\n"
-
-        " Tìm phim:\n"
+        " Cách dùng:\n\n"
         "/phim tên_phim\n"
         "Ví dụ:\n"
         "/phim naruto\n\n"
-
-        " Xem phim hot:\n"
-        "/topfilm\n\n"
-
-        " Sau khi chọn phim → bấm 'Xem tập'"
+        "/topfilm → xem phim hot"
     )
 
     await update.message.reply_text(text)
 
 
 ########################################
-# TÌM PHIM
+# SEARCH
 ########################################
 
 async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.message.reply_text(
-            " Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
+            "Ví dụ:\n/phim naruto"
         )
         return
 
@@ -49,62 +76,61 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     url = f"https://ophim1.com/v1/api/tim-kiem?keyword={keyword}"
 
-    res = requests.get(url)
-    data = res.json()
+    data = requests.get(url).json()
 
     items = data["data"]["items"]
 
     if not items:
-        await update.message.reply_text(" Không tìm thấy phim")
+        await update.message.reply_text("Không tìm thấy")
         return
 
     for item in items:
 
-        slug = item["slug"]
-        name = item["name"]
-
+        slug = item.get("slug")
+        name = item.get("name")
         poster = item.get("poster_url")
 
-        image_url = IMG_DOMAIN + poster if poster else None
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "Xem tập",
+                callback_data=f"M|{slug}"
+            )
+        ]])
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    " Xem tập",
-                    callback_data=f"M|{slug}"
+        img = get_image(poster)
+
+        try:
+
+            if img:
+
+                await update.message.reply_photo(
+                    photo=img,
+                    caption=name,
+                    reply_markup=keyboard
                 )
-            ]
-        ])
 
-        if image_url:
-            await update.message.reply_photo(
-                photo=image_url,
-                caption=f" {name}",
-                reply_markup=keyboard
-            )
-        else:
-            await update.message.reply_text(
-                f" {name}",
-                reply_markup=keyboard
-            )
+            else:
+
+                await update.message.reply_text(
+                    name,
+                    reply_markup=keyboard
+                )
+
+        except Exception as e:
+            print("Send error:", e)
 
 
 ########################################
-# TOP FILM HOT
+# TOP FILM
 ########################################
 
 async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     url = "https://ophim1.com/v1/api/home"
 
-    res = requests.get(url)
-    data = res.json()
+    data = requests.get(url).json()
 
     movies = data["data"]["items"]
-
-    if not movies:
-        await update.message.reply_text("Không có phim")
-        return
 
     count = 0
 
@@ -117,44 +143,40 @@ async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = item.get("name")
         poster = item.get("poster_url")
 
-        if not slug or not name:
-            continue
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "Xem tập",
+                callback_data=f"M|{slug}"
+            )
+        ]])
 
-        image_url = poster  # poster_url đã là link full
-
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    " Xem tập",
-                    callback_data=f"M|{slug}"
-                )
-            ]
-        ])
+        img = get_image(poster)
 
         try:
-            if image_url:
+
+            if img:
+
                 await update.message.reply_photo(
-                    photo=image_url,
-                    caption=f" {name}",
+                    photo=img,
+                    caption=name,
                     reply_markup=keyboard
                 )
+
             else:
+
                 await update.message.reply_text(
-                    f" {name}",
+                    name,
                     reply_markup=keyboard
                 )
 
             count += 1
 
         except Exception as e:
-            print(e)
-
-
-
+            print("Topfilm error:", e)
 
 
 ########################################
-# BUTTON CLICK
+# BUTTON
 ########################################
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,47 +187,36 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data.split("|")
 
 
-    ########################################
-    # CLICK PHIM → HIỆN TẬP
-    ########################################
-
     if data[0] == "M":
 
         slug = data[1]
 
         url = f"https://ophim1.com/v1/api/phim/{slug}"
 
-        res = requests.get(url)
-        json_data = res.json()
+        json_data = requests.get(url).json()
 
         episodes = json_data["data"]["item"]["episodes"]
 
         keyboard = []
 
-        for ep_group in episodes:
+        for group in episodes:
 
-            for ep in ep_group["server_data"]:
+            for ep in group["server_data"]:
 
                 ep_name = ep["name"]
 
                 keyboard.append([
                     InlineKeyboardButton(
-                        f" {ep_name}",
+                        ep_name,
                         callback_data=f"E|{slug}|{ep_name}"
                     )
                 ])
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
         await query.message.reply_text(
-            " Chọn tập:",
-            reply_markup=reply_markup
+            "Chọn tập:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-
-    ########################################
-    # CLICK TẬP → GỬI LINK
-    ########################################
 
     elif data[0] == "E":
 
@@ -214,44 +225,72 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         url = f"https://ophim1.com/v1/api/phim/{slug}"
 
-        res = requests.get(url)
-        json_data = res.json()
+        json_data = requests.get(url).json()
 
         episodes = json_data["data"]["item"]["episodes"]
 
-        for ep_group in episodes:
+        for group in episodes:
 
-            for ep in ep_group["server_data"]:
+            for ep in group["server_data"]:
 
                 if ep["name"] == ep_name:
 
                     link = ep["link_m3u8"]
 
                     await query.message.reply_text(
-                        f" {slug} - {ep_name}\n\n▶ {link}"
+                        f"{slug} - {ep_name}\n\n{link}"
                     )
 
                     return
 
 
 ########################################
+# WEB SERVER (RENDER FREE)
+########################################
+
+web = Flask(__name__)
+
+@web.route("/")
+def home():
+    return "Bot running"
+
+
+def run_web():
+
+    port = int(os.environ.get("PORT", 10000))
+
+    web.run(
+        host="0.0.0.0",
+        port=port
+    )
+
+
+########################################
+# RUN BOT
+########################################
+
+def run_bot():
+
+    bot = ApplicationBuilder().token(TOKEN).build()
+
+    bot.add_handler(CommandHandler("start", start))
+    bot.add_handler(CommandHandler("help", start))
+    bot.add_handler(CommandHandler("phim", phim))
+    bot.add_handler(CommandHandler("topfilm", topfilm))
+
+    bot.add_handler(CallbackQueryHandler(button))
+
+    print("Bot running...")
+
+    bot.run_polling()
+
+
+########################################
 # MAIN
 ########################################
 
-def main():
-
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", start))
-    app.add_handler(CommandHandler("phim", phim))
-    app.add_handler(CommandHandler("topfilm", topfilm))
-
-    app.add_handler(CallbackQueryHandler(button))
-
-    print("Bot đang chạy...")
-    app.run_polling()
-
-
 if __name__ == "__main__":
-    main()
+
+    Thread(target=run_bot).start()
+
+    run_web()
