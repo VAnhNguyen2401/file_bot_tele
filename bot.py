@@ -9,33 +9,39 @@ IMG_DOMAIN = "https://img.ophim.live/uploads/movies/"
 
 
 ########################################
-# lệnh start và help
+# START / HELP
 ########################################
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
-        " BOT XEM PHIM\n\n"
-        " Cách sử dụng:\n"
-        "Gõ lệnh:\n"
-        "/phim tên_phim\n\n"
-        " Ví dụ:\n"
-        "/phim naruto\n"
+        "🎬 BOT XEM PHIM\n\n"
 
+        "📖 Cách sử dụng:\n\n"
+
+        "🔎 Tìm phim:\n"
+        "/phim tên_phim\n"
+        "Ví dụ:\n"
+        "/phim naruto\n\n"
+
+        "🔥 Xem phim hot:\n"
+        "/topfilm\n\n"
+
+        "💡 Sau khi chọn phim → bấm 'Xem tập'"
     )
 
     await update.message.reply_text(text)
 
 
 ########################################
-# tìm phim + hiển thị ảnh
+# TÌM PHIM
 ########################################
 
 async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.message.reply_text(
-            " Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
+            "❌ Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
         )
         return
 
@@ -52,7 +58,6 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Không tìm thấy phim")
         return
 
-    # gửi từng phim kèm ảnh
     for item in items:
 
         slug = item["slug"]
@@ -60,10 +65,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         poster = item.get("poster_url")
 
-        if poster:
-            image_url = IMG_DOMAIN + poster
-        else:
-            image_url = None
+        image_url = IMG_DOMAIN + poster if poster else None
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -74,7 +76,6 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
         ])
 
-        # nếu có ảnh → gửi ảnh
         if image_url:
             await update.message.reply_photo(
                 photo=image_url,
@@ -83,13 +84,66 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         else:
             await update.message.reply_text(
-                name,
+                f"🎬 {name}",
                 reply_markup=keyboard
             )
 
 
 ########################################
-# xử lý click
+# TOP FILM HOT
+########################################
+
+async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    url = "https://ophim1.com/v1/api/home"
+
+    res = requests.get(url)
+    data = res.json()
+
+    groups = data["data"]["items"]
+
+    count = 0
+
+    for group in groups:
+
+        for item in group["items"]:
+
+            if count >= 5:
+                return
+
+            slug = item["slug"]
+            name = item["name"]
+
+            poster = item.get("poster_url")
+
+            image_url = IMG_DOMAIN + poster if poster else None
+
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🎬 Xem tập",
+                        callback_data=f"M|{slug}"
+                    )
+                ]
+            ])
+
+            if image_url:
+                await update.message.reply_photo(
+                    photo=image_url,
+                    caption=f"🔥 {name}",
+                    reply_markup=keyboard
+                )
+            else:
+                await update.message.reply_text(
+                    f"🔥 {name}",
+                    reply_markup=keyboard
+                )
+
+            count += 1
+
+
+########################################
+# BUTTON CLICK
 ########################################
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -99,8 +153,9 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data.split("|")
 
+
     ########################################
-    # click phim → hiện tập
+    # CLICK PHIM → HIỆN TẬP
     ########################################
 
     if data[0] == "M":
@@ -138,7 +193,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     ########################################
-    # click tập → gửi video link
+    # CLICK TẬP → GỬI LINK
     ########################################
 
     elif data[0] == "E":
@@ -162,24 +217,30 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link = ep["link_m3u8"]
 
                     await query.message.reply_text(
-                        f"🎬 {slug} - {ep_name}\n▶ {link}"
+                        f"🎬 {slug} - {ep_name}\n\n▶ {link}"
                     )
 
                     return
 
 
 ########################################
-# main
+# MAIN
 ########################################
 
-app = ApplicationBuilder().token(TOKEN).build()
+def main():
 
-# thêm các lệnh
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", start))
-app.add_handler(CommandHandler("phim", phim))
+    app = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", start))
+    app.add_handler(CommandHandler("phim", phim))
+    app.add_handler(CommandHandler("topfilm", topfilm))
 
-print("Bot đang chạy...")
-app.run_polling()
+    app.add_handler(CallbackQueryHandler(button))
+
+    print("Bot đang chạy...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
