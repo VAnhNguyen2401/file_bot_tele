@@ -1,12 +1,15 @@
+import os
 import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 TOKEN = os.getenv("BOT_TOKEN")
 
+IMG_DOMAIN = "https://img.ophim.live/uploads/movies/"
+
 
 ########################################
-
+# tìm phim + hiển thị ảnh
 ########################################
 
 async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,26 +31,40 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Không tìm thấy phim")
         return
 
-    keyboard = []
-
+    # gửi từng phim kèm ảnh
     for item in items:
 
         slug = item["slug"]
         name = item["name"]
 
-        keyboard.append([
-            InlineKeyboardButton(
-                name,
-                callback_data=f"M|{slug}"
-            )
+        poster = item.get("poster_url")
+
+        if poster:
+            image_url = IMG_DOMAIN + poster
+        else:
+            image_url = None
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "Xem tập",
+                    callback_data=f"M|{slug}"
+                )
+            ]
         ])
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        "Chọn phim:",
-        reply_markup=reply_markup
-    )
+        # nếu có ảnh → gửi ảnh
+        if image_url:
+            await update.message.reply_photo(
+                photo=image_url,
+                caption=name,
+                reply_markup=keyboard
+            )
+        else:
+            await update.message.reply_text(
+                name,
+                reply_markup=keyboard
+            )
 
 
 ########################################
@@ -97,6 +114,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Chọn tập:",
             reply_markup=reply_markup
         )
+
 
     ########################################
     # click tập → gửi video link
