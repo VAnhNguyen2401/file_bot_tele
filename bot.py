@@ -100,33 +100,38 @@ async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = requests.get(url)
     data = res.json()
 
-    groups = data["data"]["items"]
+    movies = data["data"]["items"]
+
+    if not movies:
+        await update.message.reply_text("Không có phim")
+        return
 
     count = 0
 
-    for group in groups:
+    for item in movies:
 
-        for item in group["items"]:
+        if count >= 10:
+            break
 
-            if count >= 5:
-                return
+        slug = item.get("slug")
+        name = item.get("name")
+        poster = item.get("poster_url")
 
-            slug = item["slug"]
-            name = item["name"]
+        if not slug or not name:
+            continue
 
-            poster = item.get("poster_url")
+        image_url = poster  # poster_url đã là link full
 
-            image_url = IMG_DOMAIN + poster if poster else None
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    " Xem tập",
+                    callback_data=f"M|{slug}"
+                )
+            ]
+        ])
 
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        " Xem tập",
-                        callback_data=f"M|{slug}"
-                    )
-                ]
-            ])
-
+        try:
             if image_url:
                 await update.message.reply_photo(
                     photo=image_url,
@@ -140,6 +145,12 @@ async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
             count += 1
+
+        except Exception as e:
+            print(e)
+
+
+
 
 
 ########################################
