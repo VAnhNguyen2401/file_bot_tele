@@ -15,19 +15,19 @@ IMG_DOMAIN = "https://img.ophim.live/uploads/movies/"
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
-        "🎬 BOT XEM PHIM\n\n"
+        " BOT XEM PHIM\n\n"
 
-        "📖 Cách sử dụng:\n\n"
+        " Cách sử dụng:\n\n"
 
-        "🔎 Tìm phim:\n"
+        " Tìm phim:\n"
         "/phim tên_phim\n"
         "Ví dụ:\n"
         "/phim naruto\n\n"
 
-        "🔥 Xem phim hot:\n"
+        " Xem phim hot:\n"
         "/topfilm\n\n"
 
-        "💡 Sau khi chọn phim → bấm 'Xem tập'"
+        " Sau khi chọn phim → bấm 'Xem tập'"
     )
 
     await update.message.reply_text(text)
@@ -41,7 +41,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         await update.message.reply_text(
-            "❌ Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
+            " Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
         )
         return
 
@@ -55,7 +55,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = data["data"]["items"]
 
     if not items:
-        await update.message.reply_text("❌ Không tìm thấy phim")
+        await update.message.reply_text(" Không tìm thấy phim")
         return
 
     for item in items:
@@ -70,7 +70,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "🎬 Xem tập",
+                    " Xem tập",
                     callback_data=f"M|{slug}"
                 )
             ]
@@ -79,12 +79,12 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if image_url:
             await update.message.reply_photo(
                 photo=image_url,
-                caption=f"🎬 {name}",
+                caption=f" {name}",
                 reply_markup=keyboard
             )
         else:
             await update.message.reply_text(
-                f"🎬 {name}",
+                f" {name}",
                 reply_markup=keyboard
             )
 
@@ -121,7 +121,7 @@ async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🎬 Xem tập",
+                        " Xem tập",
                         callback_data=f"M|{slug}"
                     )
                 ]
@@ -130,12 +130,12 @@ async def topfilm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if image_url:
                 await update.message.reply_photo(
                     photo=image_url,
-                    caption=f"🔥 {name}",
+                    caption=f" {name}",
                     reply_markup=keyboard
                 )
             else:
                 await update.message.reply_text(
-                    f"🔥 {name}",
+                    f" {name}",
                     reply_markup=keyboard
                 )
 
@@ -179,7 +179,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 keyboard.append([
                     InlineKeyboardButton(
-                        f"▶ {ep_name}",
+                        f" {ep_name}",
                         callback_data=f"E|{slug}|{ep_name}"
                     )
                 ])
@@ -187,7 +187,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.message.reply_text(
-            "📺 Chọn tập:",
+            " Chọn tập:",
             reply_markup=reply_markup
         )
 
@@ -217,7 +217,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link = ep["link_m3u8"]
 
                     await query.message.reply_text(
-                        f"🎬 {slug} - {ep_name}\n\n▶ {link}"
+                        f" {slug} - {ep_name}\n\n▶ {link}"
                     )
 
                     return
