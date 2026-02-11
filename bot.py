@@ -4,7 +4,7 @@ from threading import Thread
 from io import BytesIO
 
 from flask import Flask
-
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
@@ -269,7 +269,11 @@ def run_web():
 # RUN BOT
 ########################################
 
+
 def run_bot():
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     bot = ApplicationBuilder().token(TOKEN).build()
 
@@ -282,7 +286,11 @@ def run_bot():
 
     print("Bot running...")
 
-    bot.run_polling()
+    loop.run_until_complete(bot.initialize())
+    loop.run_until_complete(bot.start())
+    loop.run_until_complete(bot.updater.start_polling())
+
+    loop.run_forever()
 
 
 ########################################
