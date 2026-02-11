@@ -2,11 +2,11 @@ import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-TOKEN = "8572317788:AAE3b0f06r3aK4C62y7CmSVAVmdlB3BnIDM"
+TOKEN = os.getenv("BOT_TOKEN")
 
 
 ########################################
-# /phim naruto
+
 ########################################
 
 async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
