@@ -9,13 +9,34 @@ IMG_DOMAIN = "https://img.ophim.live/uploads/movies/"
 
 
 ########################################
+# lệnh start và help
+########################################
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    text = (
+        " BOT XEM PHIM\n\n"
+        " Cách sử dụng:\n"
+        "Gõ lệnh:\n"
+        "/phim tên_phim\n\n"
+        " Ví dụ:\n"
+        "/phim naruto\n"
+
+    )
+
+    await update.message.reply_text(text)
+
+
+########################################
 # tìm phim + hiển thị ảnh
 ########################################
 
 async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
-        await update.message.reply_text("Dùng: /phim tên_phim")
+        await update.message.reply_text(
+            " Bạn chưa nhập tên phim\n\nVí dụ:\n/phim naruto"
+        )
         return
 
     keyword = " ".join(context.args)
@@ -28,7 +49,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = data["data"]["items"]
 
     if not items:
-        await update.message.reply_text("Không tìm thấy phim")
+        await update.message.reply_text("❌ Không tìm thấy phim")
         return
 
     # gửi từng phim kèm ảnh
@@ -47,7 +68,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "Xem tập",
+                    "🎬 Xem tập",
                     callback_data=f"M|{slug}"
                 )
             ]
@@ -57,7 +78,7 @@ async def phim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if image_url:
             await update.message.reply_photo(
                 photo=image_url,
-                caption=name,
+                caption=f"🎬 {name}",
                 reply_markup=keyboard
             )
         else:
@@ -103,7 +124,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 keyboard.append([
                     InlineKeyboardButton(
-                        ep_name,
+                        f"▶ {ep_name}",
                         callback_data=f"E|{slug}|{ep_name}"
                     )
                 ])
@@ -111,7 +132,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.message.reply_text(
-            "Chọn tập:",
+            "📺 Chọn tập:",
             reply_markup=reply_markup
         )
 
@@ -141,7 +162,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link = ep["link_m3u8"]
 
                     await query.message.reply_text(
-                        f"{slug} - {ep_name}\n{link}"
+                        f"🎬 {slug} - {ep_name}\n▶ {link}"
                     )
 
                     return
@@ -153,7 +174,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 app = ApplicationBuilder().token(TOKEN).build()
 
+# thêm các lệnh
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", start))
 app.add_handler(CommandHandler("phim", phim))
+
 app.add_handler(CallbackQueryHandler(button))
 
 print("Bot đang chạy...")
